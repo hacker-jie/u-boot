@@ -22,6 +22,7 @@ typedef int (*init_fnc_t)(void);
 static inline int initcall_run_list(const init_fnc_t init_sequence[])
 {
 	const init_fnc_t *init_fnc_ptr;
+	int i = 0;
 
 	for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
 		unsigned long reloc_ofs = 0;
@@ -41,7 +42,8 @@ static inline int initcall_run_list(const init_fnc_t init_sequence[])
 					(char *)*init_fnc_ptr - reloc_ofs,
 					(char *)*init_fnc_ptr);
 		else
-			debug("initcall: %p\n", (char *)*init_fnc_ptr - reloc_ofs);
+			debug("initcall: %p ii=%d %p\n", (char *)*init_fnc_ptr - reloc_ofs, i++,
+					(char *)*init_fnc_ptr);
 
 		ret = (*init_fnc_ptr)();
 		if (ret) {

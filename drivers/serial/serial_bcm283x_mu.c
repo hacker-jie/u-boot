@@ -25,6 +25,7 @@
 #include <dm/pinctrl.h>
 #include <linux/bitops.h>
 #include <linux/compiler.h>
+#include <debug_uart.h>
 
 struct bcm283x_mu_regs {
 	u32 io;
@@ -202,3 +203,85 @@ U_BOOT_DRIVER(serial_bcm283x_mu) = {
 #endif
 	.priv_auto	= sizeof(struct bcm283x_mu_priv),
 };
+
+#ifdef CONFIG_DEBUG_UART_BCM_MU
+
+#define DEVICE_BASE 0x3F000000
+#define PBASE	    (DEVICE_BASE)
+
+#define GPFSEL0	  (PBASE + 0x00200000)
+#define GPFSEL1	  (PBASE + 0x00200004)
+#define GPFSEL2	  (PBASE + 0x00200008)
+#define GPFSEL3	  (PBASE + 0x0020000C)
+#define GPFSEL4	  (PBASE + 0x00200010)
+#define GPFSEL5	  (PBASE + 0x00200014)
+#define GPSET0	  (PBASE + 0x0020001C)
+#define GPSET1	  (PBASE + 0x00200020)
+#define GPCLR0	  (PBASE + 0x00200028)
+#define GPLEV0	  (PBASE + 0x00200034)
+#define GPLEV1	  (PBASE + 0x00200038)
+#define GPEDS0	  (PBASE + 0x00200040)
+#define GPEDS1	  (PBASE + 0x00200044)
+#define GPHEN0	  (PBASE + 0x00200064)
+#define GPHEN1	  (PBASE + 0x00200068)
+#define GPPUD	  (PBASE + 0x00200094)
+#define GPPUDCLK0 (PBASE + 0x00200098)
+#define GPPUDCLK1 (PBASE + 0x0020009C)
+
+#define AUX_IRQ		(PBASE + 0x00215000)
+#define AUX_ENABLES	(PBASE + 0x00215004)
+#define AUX_MU_IO_REG	(PBASE + 0x00215040)
+#define AUX_MU_IER_REG	(PBASE + 0x00215044)
+#define AUX_MU_IIR_REG	(PBASE + 0x00215048)
+#define AUX_MU_LCR_REG	(PBASE + 0x0021504C)
+#define AUX_MU_MCR_REG	(PBASE + 0x00215050)
+#define AUX_MU_LSR_REG	(PBASE + 0x00215054)
+#define AUX_MU_MSR_REG	(PBASE + 0x00215058)
+#define AUX_MU_SCRATCH	(PBASE + 0x0021505C)
+#define AUX_MU_CNTL_REG (PBASE + 0x00215060)
+#define AUX_MU_STAT_REG (PBASE + 0x00215064)
+#define AUX_MU_BAUD_REG (PBASE + 0x00215068)
+
+void uart_send(char c)
+{
+	while (1) {
+		if (readl(AUX_MU_LSR_REG) & 0x20)
+			break;
+	}
+	writel(c, AUX_MU_IO_REG);
+}
+
+static inline void _debug_uart_init(void)
+{
+	// unsigned int selector;
+
+	// selector = readl(GPFSEL1);
+	// selector &= ~(7 << 12); // clean gpio14
+	// selector |= 2 << 12; // set alt5 for gpio14
+	// selector &= ~(7 << 15); // clean gpio15
+	// selector |= 2 << 15; // set alt5 for gpio15
+	// writel(GPFSEL1, selector);
+
+	// writel(GPPUD, 0);
+	// delay(150);
+	// writel(GPPUDCLK0, (1 << 14) | (1 << 15));
+	// delay(150);
+	// writel(GPPUDCLK0, 0);
+
+	writel(1, AUX_ENABLES); //Enable mini uart (this also enables access to it registers)
+	writel(0, AUX_MU_CNTL_REG); //Disable auto flow control and disable receiver and transmitter (for now)
+	writel(0, AUX_MU_IER_REG); //Disable receive and transmit interrupts
+	writel(3, AUX_MU_LCR_REG); //Enable 8 bit mode
+	writel(0, AUX_MU_MCR_REG); //Set RTS line to be always high
+	writel(270, AUX_MU_BAUD_REG); //Set baud rate to 115200
+
+	writel(3, AUX_MU_CNTL_REG); //Finally, enable transmitter and receiver
+}
+
+static inline void _debug_uart_putc(int ch)
+{
+	uart_send(ch);
+}
+
+DEBUG_UART_FUNCS
+#endif

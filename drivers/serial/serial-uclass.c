@@ -165,6 +165,7 @@ int serial_init(void)
 	serial_find_console_or_panic();
 	gd->flags |= GD_FLG_SERIAL_READY;
 	serial_setbrg();
+	debug("TO");
 #endif
 
 	return 0;
